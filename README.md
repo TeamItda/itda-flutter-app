@@ -3,7 +3,8 @@
 
 # Yeogiyo! Client
 
-<Yeogiyo!> 프로젝트의 Client Repository 입니다.
+상명대학교 컴퓨터과학과 캡스톤디자인 5분반 잇다(Itda) 팀의 
+<Yeogiyo!> 프로젝트 Client Repository 입니다.
 
 # GitHub Role
 
