@@ -86,6 +86,10 @@ git pull origin dev
 | fix         | 버그 수정용      |
 | refactor    | 코드 리팩토링    |
 
+main 브랜치는 배포에만 사용하며
+기본적으로 개발과정에서는 dev 브랜치를 사용합니다. 
+여러가지 개발을 병행할 때 다른 브랜치들을 사용합니다.
+
 ## Commit Convention (커밋 메세지 양식 ; 작성해야 커밋 가능합니다.)
 
 | Commit Type | Description                                                                |
