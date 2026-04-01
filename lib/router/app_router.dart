@@ -19,19 +19,46 @@ final appRouter = GoRouter(
     GoRoute(path: '/splash', builder: (context, state) => const SplashView()),
     GoRoute(path: '/login', builder: (context, state) => const LoginView()),
     GoRoute(path: '/signup', builder: (context, state) => const SignupView()),
-    ShellRoute(
-      builder: (context, state, child) => MainShell(child: child),
-      routes: [
-        GoRoute(path: '/home', builder: (context, state) => const HomeView()),
-        GoRoute(path: '/chat', builder: (context, state) => const ChatView()),
-        GoRoute(path: '/map', builder: (context, state) => const MapView()),
-        GoRoute(
-          path: '/favorites',
-          builder: (context, state) => const FavoriteView(),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          MainShell(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const HomeView(),
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const ProfileView(),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/chat',
+              builder: (context, state) => const ChatView(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/map', builder: (context, state) => const MapView()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/favorites',
+              builder: (context, state) => const FavoriteView(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileView(),
+            ),
+          ],
         ),
       ],
     ),
