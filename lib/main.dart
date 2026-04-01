@@ -4,6 +4,11 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Allow the app to boot in local/dev environments where Firebase
+    // configuration files have not been added yet.
+  }
   runApp(const MyApp());
 }
