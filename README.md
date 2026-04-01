@@ -21,8 +21,9 @@
   >추가 바람
 
   <details>  
-    <summary>수정 파일 목록 펼치기/접기</summary>  
-    ### 수정된 파일 목록 
+    <summary>수정 파일 목록 펼치기/접기</summary>    
+    
+    ### 수정된 파일 목록
     README.md  
     android/app/build.gradle.kts  
     android/app/src/main/AndroidManifest.xml  
