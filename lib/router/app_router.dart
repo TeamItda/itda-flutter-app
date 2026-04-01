@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../auth/view/login_view.dart';
 import '../auth/view/signup_view.dart';
 import '../auth/view/splash_view.dart';
+import '../chat/view/chat_view.dart';
 import '../facility/view/facility_detail_view.dart';
 import '../facility/view/facility_list_view.dart';
 import '../favorite/view/favorite_view.dart';
@@ -22,11 +23,7 @@ final appRouter = GoRouter(
       builder: (context, state, child) => MainShell(child: child),
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomeView()),
-        GoRoute(
-          path: '/chat',
-          builder: (context, state) =>
-              const Scaffold(body: Center(child: Text('AI 챗봇 - 팀원 E'))),
-        ),
+        GoRoute(path: '/chat', builder: (context, state) => const ChatView()),
         GoRoute(
           path: '/map',
           builder: (context, state) =>
@@ -54,9 +51,6 @@ final appRouter = GoRouter(
         categoryId: state.uri.queryParameters['category'] ?? 'medical',
       ),
     ),
-    GoRoute(
-      path: '/search',
-      builder: (context, state) => const SearchView(),
-    ),
+    GoRoute(path: '/search', builder: (context, state) => const SearchView()),
   ],
 );
