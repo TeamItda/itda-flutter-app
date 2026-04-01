@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/view/login_view.dart';
@@ -9,6 +8,7 @@ import '../facility/view/facility_detail_view.dart';
 import '../facility/view/facility_list_view.dart';
 import '../favorite/view/favorite_view.dart';
 import '../home/view/home_view.dart';
+import '../map/view/map_view.dart';
 import '../profile/view/profile_view.dart';
 import '../search/view/search_view.dart';
 import '../shell/main_shell.dart';
@@ -24,11 +24,7 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(path: '/home', builder: (context, state) => const HomeView()),
         GoRoute(path: '/chat', builder: (context, state) => const ChatView()),
-        GoRoute(
-          path: '/map',
-          builder: (context, state) =>
-              const Scaffold(body: Center(child: Text('지도 - 팀원 C'))),
-        ),
+        GoRoute(path: '/map', builder: (context, state) => const MapView()),
         GoRoute(
           path: '/favorites',
           builder: (context, state) => const FavoriteView(),

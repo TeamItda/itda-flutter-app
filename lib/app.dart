@@ -7,6 +7,7 @@ import 'core/constants.dart';
 import 'facility/viewmodel/facility_detail_viewmodel.dart';
 import 'facility/viewmodel/facility_list_viewmodel.dart';
 import 'home/viewmodel/home_viewmodel.dart';
+import 'map/viewmodel/map_viewmodel.dart';
 import 'router/app_router.dart';
 
 class YeogiyoApp extends StatelessWidget {
@@ -21,6 +22,7 @@ class YeogiyoApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
         ChangeNotifierProvider(create: (_) => FacilityListViewModel()),
         ChangeNotifierProvider(create: (_) => FacilityDetailViewModel()),
+        ChangeNotifierProvider(create: (_) => MapViewModel()),
       ],
       child: MaterialApp.router(
         title: 'Yeogiyo - 여기요',
