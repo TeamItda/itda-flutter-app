@@ -1,15 +1,13 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
 
+import 'package:flutter/material.dart';
 import 'app.dart';
+
+// TODO: Firebase 연동 시 아래 주석 해제
+// import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp();
-  } catch (_) {
-    // Allow the app to boot in local/dev environments where Firebase
-    // configuration files have not been added yet.
-  }
+  // TODO: Firebase 연동 시 아래 주석 해제
+  // await Firebase.initializeApp();
   runApp(const YeogiyoApp());
 }

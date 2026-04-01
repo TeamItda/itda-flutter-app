@@ -1,83 +1,54 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/constants.dart';
+import '../../facility/service/hospital_service.dart';
+import '../../facility/service/pharmacy_service.dart';
+import '../../facility/service/school_service.dart';
 import '../model/map_facility.dart';
 
 class MapViewModel extends ChangeNotifier {
-  MapViewModel({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  MapViewModel({
+    HospitalService? hospitalService,
+    PharmacyService? pharmacyService,
+    SchoolService? schoolService,
+  }) : _hospitalService = hospitalService ?? HospitalService(),
+       _pharmacyService = pharmacyService ?? PharmacyService(),
+       _schoolService = schoolService ?? SchoolService();
 
-  final FirebaseFirestore _firestore;
+  final HospitalService _hospitalService;
+  final PharmacyService _pharmacyService;
+  final SchoolService _schoolService;
 
+// 마커 이미지 
   static const List<FacilityTypeOption> typeOptions = [
     FacilityTypeOption(
       id: 'all',
       label: '전체',
       color: Color(0xFF2563EB),
       icon: Icons.apps_rounded,
-      collectionNames: [],
     ),
     FacilityTypeOption(
-      id: 'hospital',
+      id: 'medical',
       label: '병원',
       color: Color(0xFFDC2626),
       icon: Icons.local_hospital_rounded,
-      collectionNames: ['hospitals', 'hospital', 'medical_facilities'],
     ),
     FacilityTypeOption(
       id: 'pharmacy',
       label: '약국',
       color: Color(0xFF16A34A),
       icon: Icons.local_pharmacy_rounded,
-      collectionNames: ['pharmacies', 'pharmacy'],
     ),
     FacilityTypeOption(
-      id: 'restaurant',
-      label: '음식점',
-      color: Color(0xFFF97316),
-      icon: Icons.restaurant_rounded,
-      collectionNames: ['restaurants', 'restaurant'],
-    ),
-    FacilityTypeOption(
-      id: 'school',
+      id: 'education',
       label: '학교',
       color: Color(0xFF7C3AED),
       icon: Icons.school_rounded,
-      collectionNames: ['schools', 'school'],
-    ),
-    FacilityTypeOption(
-      id: 'childcare',
-      label: '보육',
-      color: Color(0xFFDB2777),
-      icon: Icons.child_care_rounded,
-      collectionNames: ['childcare', 'childcares', 'daycare_centers'],
-    ),
-    FacilityTypeOption(
-      id: 'government',
-      label: '행정',
-      color: Color(0xFF0F766E),
-      icon: Icons.account_balance_rounded,
-      collectionNames: ['government', 'governments', 'public_offices'],
-    ),
-    FacilityTypeOption(
-      id: 'welfare',
-      label: '복지',
-      color: Color(0xFF0891B2),
-      icon: Icons.volunteer_activism_rounded,
-      collectionNames: ['welfare', 'welfares', 'welfare_centers'],
-    ),
-    FacilityTypeOption(
-      id: 'culture',
-      label: '문화',
-      color: Color(0xFFCA8A04),
-      icon: Icons.museum_rounded,
-      collectionNames: ['culture', 'cultures', 'cultural_facilities'],
     ),
   ];
 
@@ -88,6 +59,7 @@ class MapViewModel extends ChangeNotifier {
   List<MapFacility> _facilities = const [];
   final Map<String, BitmapDescriptor> _markerIcons =
       <String, BitmapDescriptor>{};
+  final Map<String, LatLng?> _geocodeCache = <String, LatLng?>{};
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -123,7 +95,20 @@ class MapViewModel extends ChangeNotifier {
 
   CameraPosition get initialCameraPosition => const CameraPosition(
     target: LatLng(AppConstants.jongnoCenterLat, AppConstants.jongnoCenterLng),
-    zoom: 13.2,
+    zoom: 14.1,
+  );
+
+  CameraTargetBounds get cameraTargetBounds => CameraTargetBounds(
+    LatLngBounds(
+      southwest: const LatLng(
+        AppConstants.jongnoSouthLat,
+        AppConstants.jongnoWestLng,
+      ),
+      northeast: const LatLng(
+        AppConstants.jongnoNorthLat,
+        AppConstants.jongnoEastLng,
+      ),
+    ),
   );
 
   Future<void> ensureInitialized() async {
@@ -141,9 +126,13 @@ class MapViewModel extends ChangeNotifier {
 
     try {
       await _ensureMarkerIcons();
-      _facilities = await _loadFacilities();
+      _facilities = await _loadFacilitiesFromServices();
+      if (_facilities.isEmpty) {
+        _errorMessage = '시설 목록 데이터에서 표시할 좌표를 찾지 못했습니다.';
+      }
     } catch (error) {
-      _errorMessage = '시설 데이터를 불러오지 못했습니다. Firebase 설정과 컬렉션명을 확인해주세요.';
+      _facilities = const [];
+      _errorMessage = '시설 목록 데이터를 불러오지 못했습니다.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -167,131 +156,96 @@ class MapViewModel extends ChangeNotifier {
 
   Future<void> _ensureMarkerIcons() async {
     for (final option in typeOptions.where((entry) => entry.id != 'all')) {
-      _markerIcons.putIfAbsent(
-        option.id,
-        () => BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      );
       _markerIcons[option.id] = await _buildMarkerIcon(option);
     }
   }
 
-  Future<List<MapFacility>> _loadFacilities() async {
-    final List<MapFacility> facilities = <MapFacility>[];
+  Future<List<MapFacility>> _loadFacilitiesFromServices() async {
+    final hospitals = await _hospitalService.fetchHospitals();
+    final pharmacies = await _pharmacyService.fetchPharmacies();
+    final schools = await _schoolService.fetchSchools();
 
-    for (final option in typeOptions.where((entry) => entry.id != 'all')) {
-      for (final collectionName in option.collectionNames) {
-        QuerySnapshot<Map<String, dynamic>> snapshot;
-        try {
-          snapshot = await _firestore.collection(collectionName).get();
-        } catch (_) {
-          continue;
-        }
+    final facilities = <MapFacility>[
+      for (final hospital in hospitals)
+        if (_isValidCoordinate(hospital.lat, hospital.lng))
+          MapFacility(
+            id: 'medical:${hospital.id}',
+            name: hospital.name,
+            type: 'medical',
+            collectionName: 'facility_list',
+            position: LatLng(hospital.lat, hospital.lng),
+            address: hospital.addr,
+            phone: hospital.tel,
+          ),
+      for (final pharmacy in pharmacies)
+        if (_isValidCoordinate(pharmacy.lat, pharmacy.lng))
+          MapFacility(
+            id: 'pharmacy:${pharmacy.id}',
+            name: pharmacy.name,
+            type: 'pharmacy',
+            collectionName: 'facility_list',
+            position: LatLng(pharmacy.lat, pharmacy.lng),
+            address: pharmacy.addr,
+            phone: pharmacy.tel,
+          ),
+    ];
 
-        for (final doc in snapshot.docs) {
-          final facility = await _normalizeFacility(
-            option: option,
-            collectionName: collectionName,
-            doc: doc,
-          );
-          if (facility != null) {
-            facilities.add(facility);
-          }
-        }
+    for (final school in schools) {
+      final fullAddress = [
+        school.addr,
+        school.addrDetail,
+      ].where((value) => value.trim().isNotEmpty).join(' ');
+      final position = await _geocodeAddress(fullAddress);
+      if (position == null || !_isNearJongno(position, fullAddress)) {
+        continue;
       }
+      facilities.add(
+        MapFacility(
+          id: 'education:${school.code}',
+          name: school.name,
+          type: 'education',
+          collectionName: 'facility_list',
+          position: position,
+          address: fullAddress,
+          phone: school.tel,
+        ),
+      );
     }
 
-    final deduped = <String, MapFacility>{};
-    for (final facility in facilities) {
-      deduped['${facility.type}:${facility.id}'] = facility;
-    }
-
-    final result = deduped.values.toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-    return result;
-  }
-
-  Future<MapFacility?> _normalizeFacility({
-    required FacilityTypeOption option,
-    required String collectionName,
-    required QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  }) async {
-    final data = doc.data();
-    final name = _readString(data, const [
-      'name',
-      'facilityName',
-      'title',
-      '기관명',
-      '시설명',
-      '병원명',
-      '약국명',
-      '업소명',
-      '학교명',
-      '어린이집명',
-    ]);
-    if (name == null || name.isEmpty) {
-      return null;
-    }
-
-    final address = _readString(data, const [
-      'address',
-      'roadAddress',
-      'fullAddress',
-      'addr',
-      '도로명주소',
-      '소재지도로명주소',
-      '소재지지번주소',
-      '주소',
-    ]);
-
-    final position = await _readLatLng(data, fallbackAddress: address);
-    if (position == null || !_isNearJongno(position, address)) {
-      return null;
-    }
-
-    return MapFacility(
-      id: '$collectionName:${doc.id}',
-      name: name,
-      type: option.id,
-      collectionName: collectionName,
-      position: position,
-      address: address,
-      phone: _readString(data, const ['phone', 'tel', '전화번호', '연락처']),
+    facilities.retainWhere(
+      (facility) => _isNearJongno(facility.position, facility.address),
     );
+
+    facilities.sort((a, b) => a.name.compareTo(b.name));
+    return facilities;
   }
 
-  Future<LatLng?> _readLatLng(
-    Map<String, dynamic> data, {
-    String? fallbackAddress,
-  }) async {
-    final geopoint = _readGeoPoint(data, const [
-      'location',
-      'geoPoint',
-      'geopoint',
-      'coordinates',
-      'coordinate',
-      'position',
-    ]);
-    if (geopoint != null) {
-      return LatLng(geopoint.latitude, geopoint.longitude);
-    }
+  bool _isValidCoordinate(double lat, double lng) {
+    return lat != 0 && lng != 0;
+  }
 
-    final lat = _readDouble(data, const ['lat', 'latitude', '위도', 'y']);
-    final lng = _readDouble(data, const ['lng', 'lon', 'longitude', '경도', 'x']);
-    if (lat != null && lng != null) {
-      return LatLng(lat, lng);
-    }
-
-    if (fallbackAddress == null || fallbackAddress.isEmpty) {
+  Future<LatLng?> _geocodeAddress(String address) async {
+    if (address.trim().isEmpty) {
       return null;
+    }
+    if (_geocodeCache.containsKey(address)) {
+      return _geocodeCache[address];
     }
 
     try {
-      final placemarks = await locationFromAddress(fallbackAddress);
+      final placemarks = await locationFromAddress(address);
       if (placemarks.isEmpty) {
+        _geocodeCache[address] = null;
         return null;
       }
-      return LatLng(placemarks.first.latitude, placemarks.first.longitude);
+      final position = LatLng(
+        placemarks.first.latitude,
+        placemarks.first.longitude,
+      );
+      _geocodeCache[address] = position;
+      return position;
     } catch (_) {
+      _geocodeCache[address] = null;
       return null;
     }
   }
@@ -303,56 +257,6 @@ class MapViewModel extends ChangeNotifier {
     final latDelta = (position.latitude - AppConstants.jongnoCenterLat).abs();
     final lngDelta = (position.longitude - AppConstants.jongnoCenterLng).abs();
     return latDelta <= 0.13 && lngDelta <= 0.13;
-  }
-
-  String? _readString(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value == null) {
-        continue;
-      }
-      final text = value.toString().trim();
-      if (text.isNotEmpty) {
-        return text;
-      }
-    }
-    return null;
-  }
-
-  double? _readDouble(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value == null) {
-        continue;
-      }
-      if (value is num) {
-        return value.toDouble();
-      }
-      if (value is String) {
-        final parsed = double.tryParse(value);
-        if (parsed != null) {
-          return parsed;
-        }
-      }
-    }
-    return null;
-  }
-
-  GeoPoint? _readGeoPoint(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key];
-      if (value is GeoPoint) {
-        return value;
-      }
-      if (value is Map<String, dynamic>) {
-        final lat = _readDouble(value, const ['lat', 'latitude']);
-        final lng = _readDouble(value, const ['lng', 'lon', 'longitude']);
-        if (lat != null && lng != null) {
-          return GeoPoint(lat, lng);
-        }
-      }
-    }
-    return null;
   }
 
   Future<BitmapDescriptor> _buildMarkerIcon(FacilityTypeOption option) async {
@@ -422,12 +326,10 @@ class FacilityTypeOption {
     required this.label,
     required this.color,
     required this.icon,
-    required this.collectionNames,
   });
 
   final String id;
   final String label;
   final Color color;
   final IconData icon;
-  final List<String> collectionNames;
 }

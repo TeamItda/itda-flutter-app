@@ -8,8 +8,14 @@ class AppConstants {
   static const String neisApiKey = '';
   static const String googleMapsApiKey =
       'AIzaSyDDxfuNuVSbsOg5myMHfVGGnG1tEPhlgFs';
+  // 지도 초기 진입 중심은 종로구청 인근 좌표
   static const double jongnoCenterLat = 37.57295;
   static const double jongnoCenterLng = 126.97936;
+  // 종로구보다 살짝 넓은 범위로 지도 제한
+  static const double jongnoSouthLat = 37.5450;
+  static const double jongnoWestLng = 126.9320;
+  static const double jongnoNorthLat = 37.6100;
+  static const double jongnoEastLng = 127.0560;
 }
 
 class AppColors {

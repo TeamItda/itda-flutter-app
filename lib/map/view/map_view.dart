@@ -20,6 +20,7 @@ class _MapViewState extends State<MapView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // context/provider 접근 용 프레임 대기
       unawaited(context.read<MapViewModel>().ensureInitialized());
     });
   }
@@ -53,6 +54,9 @@ class _MapViewState extends State<MapView> {
               children: [
                 GoogleMap(
                   initialCameraPosition: viewModel.initialCameraPosition,
+                  // 지도 범위 제한
+                  cameraTargetBounds: viewModel.cameraTargetBounds,
+                  minMaxZoomPreference: const MinMaxZoomPreference(13.4, 17.8),
                   markers: viewModel.markers,
                   myLocationButtonEnabled: false,
                   compassEnabled: true,
@@ -138,7 +142,7 @@ class _MapSummary extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               viewModel.errorMessage ??
-                  '${viewModel.filteredFacilities.length}개 시설 마커가 표시되고 있습니다.',
+                  '${viewModel.filteredFacilities.length}개 시설이 있습니다.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: const Color(0xFF475569),
               ),
