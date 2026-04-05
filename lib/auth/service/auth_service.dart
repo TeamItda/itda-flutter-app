@@ -76,7 +76,11 @@ class AuthService {
 
   // 로그아웃
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      // Google 로그인이 아닌 경우 무시
+    }
     await _auth.signOut();
   }
 
