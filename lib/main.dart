@@ -16,8 +16,6 @@ Future<void> main() async {
     mapsImplementation.useAndroidViewSurface = true;
   }
 
-  await dotenv.load(fileName: '.env');
-
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
