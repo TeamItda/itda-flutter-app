@@ -1,11 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '292137139277-53amsjj741vtkfogsfdellk0itkjql5f.apps.googleusercontent.com',
+  );
 
   // 현재 로그인된 유저
   User? get currentUser => _auth.currentUser;
@@ -23,29 +26,46 @@ class AuthService {
 
   // Google 로그인
   Future<void> signInWithGoogle() async {
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return; // 취소한 경우
+    if (kIsWeb) {
+      // 웹일 때
+      final googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+      final result = await _auth.signInWithPopup(googleProvider);
+      final user = result.user;
+      if (user != null && result.additionalUserInfo!.isNewUser) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': user.email,
+          'nickname': user.displayName ?? '',
+          'language': 'ko',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } else {
+      // 앱(안드로이드/iOS)일 때
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
 
-    final GoogleSignInAuthentication googleAuth =
-    await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+      await googleUser.authentication;
 
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    final userCredential = await _auth.signInWithCredential(credential);
-
-    // Firestore에 유저 정보 저장 (처음 로그인한 경우)
-    final user = userCredential.user;
-    if (user != null && userCredential.additionalUserInfo!.isNewUser) {
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': user.email,
-        'nickname': user.displayName ?? '',
-        'language': 'ko',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
+      if (user != null && userCredential.additionalUserInfo!.isNewUser) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': user.email,
+          'nickname': user.displayName ?? '',
+          'language': 'ko',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
     }
   }
 
@@ -63,7 +83,6 @@ class AuthService {
 
     final user = userCredential.user;
     if (user != null) {
-      // Firestore에 유저 정보 저장
       await _firestore.collection('users').doc(user.uid).set({
         'uid': user.uid,
         'email': email,
