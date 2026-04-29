@@ -47,4 +47,3 @@ flutter:
     - assets/jongno_restaurants.json
     - assets/jongno_culture.json
     - assets/jongno_government.json
-    - .env

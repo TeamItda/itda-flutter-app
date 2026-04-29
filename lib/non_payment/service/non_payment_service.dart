@@ -1,10 +1,9 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NonPaymentService {
   // HIRA 비급여진료비 API
-  static String get _apiKey => dotenv.env['HIRA_API_KEY'] ?? '';
+  static const String _apiKey = '0a59ef1351eb74c8f4c2ff06d647b1cdb6ea0b9d20511bd21190e60a4e026c97';
   static const String _baseUrl =
       'http://apis.data.go.kr/B551182/nonPayInfoService';
 
